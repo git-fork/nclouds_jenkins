@@ -82,13 +82,6 @@ Resources:
           Essential: true
           Image: !Sub ${AccountNumber}.dkr.ecr.${RegionName}.amazonaws.com/${RepositoryName}:${JenkinsTag}
           Environment:
-            # - Name: CLOUD_NAME
-            #   Value: dap-jenkins-slaves
-            # - Name: SLAVE_LABEL
-            # - Name: SLAVE_JENKINS_ROOT
-            # - Name: SLAVE_CPU
-            # - Name: SLAVE_SLAVE_MEMORY
-            # - Name: JENKINS_USERNAME
             - Name: ECS_CLUSTER_ARN
               Value: !Sub arn:aws:ecs:${RegionName}:${AccountNumber}:cluster/${Cluster}
             - Name: JENKINS_PASSWORD
@@ -108,8 +101,6 @@ Resources:
           PortMappings:
             - ContainerPort: 8080
               HostPort: 80
-            - ContainerPort: 8080
-              HostPort: 8080
             - ContainerPort: 50000
               HostPort: 50000
           LogConfiguration:
@@ -124,7 +115,7 @@ Resources:
       ContainerDefinitions:
         - Name: jenkins-slave
           Essential: true
-          Image: ${AccountNumber}.dkr.ecr.${RegionName}.amazonaws.com/${SlaveRepositoryName}:${SlaveTag}
+          Image: jenkinsci/jnlp-slave
           Memory: 1500
           LogConfiguration:
             LogDriver: awslogs
@@ -136,7 +127,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Ref AWS::StackName
-      RetentionInDays: 7
+      RetentionInDays: 365
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup

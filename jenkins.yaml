@@ -100,7 +100,7 @@ Resources:
       Parameters:
         EnvironmentName: !Ref AWS::StackName
         VPC: !Ref VPC
-        Subnets: !Ref ALBSubnets
+        Subnets: !Join [",", !Ref ALBSubnets]
         SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
 
   ECS:
@@ -113,7 +113,7 @@ Resources:
         ClusterSize: !Ref ECSClusterSize
         VPC: !Ref VPC
         SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-        Subnets: !Ref ECSHostSubnets
+        Subnets: !Join [",", !Ref ECSHostSubnets]
         KeyName: !Ref KeyName
         Bucket: !Ref Bucket
         RegionName: !Ref AWS::Region
