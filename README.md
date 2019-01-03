@@ -10,28 +10,34 @@ The repository consists of a set of nested templates that deploy the following:
 
 ## Getting started
 
-###  Generating KMS key id
+### Generating KMS key id
 
 We store the encrypted SSH keys in KMS to checkout the code for build. Follow these steps to generate new KMS key
 
 1. Go to IAM Service on the aws console (https://console.aws.amazon.com/iam/home?region=us-east-1#encryptionKeys)
 2. Click on Create Key
-	- Name accordingly and select key Material Origin KMS
-3. Give permission accordingly 
-4. Note Key ID
+   - Name accordingly and select key Material Origin KMS
+3. Give permission accordingly
+4. Note Key ID `001JNCI 2d06d0e9-0083-4070-bb7e-53553bce5caf`
 
 ### Encrypting user's private key and uploading to s3
 
 1. Install aws cli and configure the cli (http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
 2. Encrypting the private key
+
 ```
        aws --region us-east-1 kms encrypt --key-id <KEY ID GENERATED IN ABOVE STEP> --plaintext fileb://~/.ssh/id_rsa --query CiphertextBlob --output text | base64 --decode > id_rsa
-```
-3. Upload encrypted id_rsa to s3 bucket through awscli 
-```
-       s3cmd put id_rsa s3://<s3-BUCKET NAME>/id_rsa
+
+       aws --region us-east-1 kms encrypt --key-id 2d06d0e9-0083-4070-bb7e-53553bce5caf --plaintext fileb://./dap-dev-private-kp.pem --query CiphertextBlob --output text | base64 --decode > id_rsa
 ```
 
+3. Upload encrypted id_rsa to s3 bucket through awscli
+
+```
+       s3cmd put id_rsa s3://<s3-BUCKET NAME>/id_rsa
+
+       aws s3 cp id_rsa s3://dap-jenkins-service/id_rsa
+```
 
 ### Build docker images of jenkins master and slave and upload to ECR
 
@@ -40,39 +46,53 @@ We store the encrypted SSH keys in KMS to checkout the code for build. Follow th
 2. Note the repository uri which will be used to push the jenkins images
 
 3. Go the src directory of this cloned repository.
+
 ```
          cd services/src
 ```
 
-   - Build jenkins master image by the main Dockerfile but keep the name of the image same as the ECR name which you have created earlier
+- Build jenkins master image by the main Dockerfile but keep the name of the image same as the ECR name which you have created earlier
+
 ```
         docker build -t <ECR NAME>:latest .
    Example-
-        docker build -t nclouds-jenkins/jenkins:latest .
+        docker build -t dap/dap-jenkins-master:test-v01030400 .
+
+        docker build -t 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-master:test-v01030400 .
 ```
 
-  - Build jenkins slave image by the Dockerfile.slave
+- Build jenkins slave image by the Dockerfile.slave
+
 ```
         docker build -t <ECR NAME>:slave -f Dockerfile.slave .
    Example-
-        sudo docker build -t nclouds-jenkins/jenkins:slave -f Dockerfile.slave .
+        sudo docker build -t dap/dap-jenkins-slave:test-v01030400 -f Dockerfile.slave .
+
+        docker build -t 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-slave:test-v01030400 -f Dockerfile.slave .
 ```
 
-  - Push the build images to the ECR
+- Push the build images to the ECR
+
 ```
+$(aws ecr get-login --no-include-email)
+
 For master image:-
      docker tag <ECR NAME>:latest <ECR URI ADDERESS>:latest
      docker push ECR URI ADDERESS>:latest
    Example-
-     docker tag docker tag nclouds-jenkins/jenkins:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/nclouds-jenkins/jenkins:latest
-     docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/nclouds-jenkins/jenkins:latest
+     docker tag docker tag dap/dap-jenkins-master:test-v01030400 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-master:test-v01030400
+     docker push 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-master:test-v01030400
+
+     docker push 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-master:test-v01030400
 
 For slave image:-
     docker tag <ECR NAME>:slave <ECR URI ADDERESS>:slave
     docker push <ECR URI ADDERESS>:slave
   Example-
-    docker tag nclouds-jenkins/jenkins:slave 123456789012.dkr.ecr.us-east-1.amazonaws.com/nclouds-jenkins/jenkins:slave
-    docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/nclouds-jenkins/jenkins:slave
+    docker tag dap/dap-jenkins-slave:test-v01030400 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-slave:test-v01030400
+    docker push 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-slave:test-v01030400
+
+    docker push 846018127931.dkr.ecr.us-east-1.amazonaws.com/dap/dap-jenkins-slave:test-v01030400
 
 ```
 
@@ -80,18 +100,16 @@ For slave image:-
 
 1. Clone the GitHub repository to your local machine.
 2. Make modification on these values to the jenkins.yaml template
-      - set KeyName to the name of the key which will be further used to login the ECS instance.
-      - set ECSInstanceType to your's requirement. Currently it has been set to t2.large
-      - set ECSClusterSize to the total number of instances in the ECS cluster. Currently it has been set to 1.
-      - set Bucket to the name of the bucket where you have uploaded your's encrypted private key and known_hosts file.
-      - set RegionName you want your cluster be launched. Region name should be same as the region name of bucket.
-      - set AccountNumber to your's own ECS account number.
-      - set JenkinsPassword to the password of your's choice. Currently the default password is S5P$m\q7LFWsMdYh
-      - set RepositoryName to the ECR repo where the images of jenkins master and slave will reside. 
-      - set JenkinsTag to the latest image tag of the jenkins master image which  you have build with the main Dockerfile
-      - set SlaveTag to the latest image tag of the jenkins slave image which you have build with the Dockerfile.slave
-
-
+   - set KeyName to the name of the key which will be further used to login the ECS instance.
+   - set ECSInstanceType to your's requirement. Currently it has been set to t2.large
+   - set ECSClusterSize to the total number of instances in the ECS cluster. Currently it has been set to 1.
+   - set Bucket to the name of the bucket where you have uploaded your's encrypted private key and known_hosts file.
+   - set RegionName you want your cluster be launched. Region name should be same as the region name of bucket.
+   - set AccountNumber to your's own ECS account number.
+   - set JenkinsPassword to the password of your's choice. Currently the default password is S5P\$m\q7LFWsMdYh
+   - set RepositoryName to the ECR repo where the images of jenkins master and slave will reside.
+   - set JenkinsTag to the latest image tag of the jenkins master image which you have build with the main Dockerfile
+   - set SlaveTag to the latest image tag of the jenkins slave image which you have build with the Dockerfile.slave
 
 ### Upload the templates to the s3 bucket
 
